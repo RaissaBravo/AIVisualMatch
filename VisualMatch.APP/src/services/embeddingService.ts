@@ -1,8 +1,8 @@
 import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { decode } from 'fast-png';
 import * as ort from 'onnxruntime-react-native';
+import * as UPNG from 'upng-js';
 import type { ModelInfo } from '@/src/types/ModelInfo';
 import type { Rect, Size } from '@/src/utils/crop';
 import { calculateCropRegion } from '@/src/utils/crop';
@@ -27,9 +27,12 @@ function rgbaToRgb(data: ArrayLike<number>, pixels: number): Uint8Array {
 }
 async function imageUriToTensor(uri: string, info: ModelInfo): Promise<ort.Tensor> {
   const resized = await manipulateAsync(uri, [{ resize: { width: info.input_width, height: info.input_height } }], { format: SaveFormat.PNG, compress: 1 });
-  const png = decode(await new File(resized.uri).bytes());
+  const fileBytes = await new File(resized.uri).bytes();
+  const png = UPNG.decode(Uint8Array.from(fileBytes).buffer);
   if (png.width !== info.input_width || png.height !== info.input_height) throw new Error('Resize produziu dimensão inesperada.');
-  const rgb = rgbaToRgb(png.data, png.width * png.height);
+  const rgbaFrames = UPNG.toRGBA8(png);
+  if (rgbaFrames.length !== 1) throw new Error('PNG processado possui múltiplos frames.');
+  const rgb = rgbaToRgb(new Uint8Array(rgbaFrames[0]), png.width * png.height);
   return new ort.Tensor('uint8', rgb, [1, info.input_height, info.input_width, 3]);
 }
 export async function preprocessImage(uri: string, info: ModelInfo): Promise<ort.Tensor> { validateContract(info); return imageUriToTensor(uri, info); }

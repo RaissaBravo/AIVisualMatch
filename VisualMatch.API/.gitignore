@@ -4,6 +4,5 @@ __pycache__/
 *.py[cod]
 data/*.db
 images/*/
-models/*.onnx
 compatibility_test/expected_embedding.json
 compatibility_test/model_info.json

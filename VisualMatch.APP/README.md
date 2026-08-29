@@ -29,7 +29,7 @@ O contexto lê Products, ModelInfo e timestamp do AsyncStorage imediatamente e s
 1. Vision Camera v5 captura uma foto por vez, no máximo a cada 1.000 ms.
 2. `calculateCropRegion` desfaz o preview `cover` e converte a ROI central 75% × 45% em pixels da foto orientada.
 3. Image Manipulator aplica crop real e resize 224×224; PNG evita outra perda JPEG.
-4. `fast-png` gera pixels, convertidos para `Uint8Array` RGB NHWC `[1,224,224,3]`.
+4. `upng-js` gera pixels RGBA, convertidos para `Uint8Array` RGB NHWC `[1,224,224,3]`.
 5. Uma única sessão ONNX processa o tensor. O grafo do backend já faz cast, `/255`, NHWC→NCHW e normalização ImageNet.
 6. A saída `[1280]` recebe L2 normalization. Cada produto usa o maior cosine similarity entre suas referências; `>= 0.65` é match e os cinco melhores aparecem ordenados.
 
@@ -54,4 +54,4 @@ npx expo-doctor
 
 `app/(tabs)` contém as telas; `src/components`, `context`, `hooks`, `services`, `config`, `types` e `utils` separam UI, sincronização, inferência e matemática. `assets/models` recebe o ONNX e `compatibility_test` os fixtures.
 
-Versões centrais (lockfile): Expo 57.0.18, React Native 0.86.3, Expo Router 57.0.17, Vision Camera 5.2.3, ONNX Runtime RN 1.24.3, AsyncStorage 2.2.0, Image Manipulator 57.0.14, FileSystem 57.0.6 e fast-png 8.0.0.
+Versões centrais (lockfile): Expo 57.0.18, React Native 0.86.3, Expo Router 57.0.17, Vision Camera 5.2.3, ONNX Runtime RN 1.24.3, AsyncStorage 2.2.0, Image Manipulator 57.0.14, FileSystem 57.0.6 e upng-js 2.1.0.

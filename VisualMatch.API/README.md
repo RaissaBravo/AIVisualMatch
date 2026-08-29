@@ -23,12 +23,14 @@ cd VisualMatch.API
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 - Admin: http://localhost:8000/
 - Swagger: http://localhost:8000/docs
 - API: http://localhost:8000/api
+
+Para acessar a API a partir de um celular na mesma rede Wi-Fi, use o IP local do Mac no app (por exemplo, `EXPO_PUBLIC_API_BASE_URL=http://192.168.1.194:8000`). O endereço `0.0.0.0` serve apenas para o Uvicorn escutar em todas as interfaces; ele não deve ser usado como URL no celular.
 
 Sem o ONNX, o servidor inicia e produtos sem fotos podem ser mantidos. Upload e regeneração retornam `503` com o caminho esperado do modelo; `/api/model-info` retorna `available: false`. Isso evita inferência simulada em produção.
 

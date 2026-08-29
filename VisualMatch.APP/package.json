@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-navigation/native": "^7.3.18",
     "expo": "~57.0.18",
     "expo-constants": "~57.0.16",
     "expo-dev-client": "~57.0.16",
@@ -17,7 +16,6 @@
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.2",
     "expo-web-browser": "~57.0.2",
-    "fast-png": "^8.0.0",
     "onnxruntime-react-native": "^1.24.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -29,11 +27,13 @@
     "react-native-screens": "~4.26.0",
     "react-native-vision-camera": "^5.2.3",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.10.1"
+    "react-native-worklets": "0.10.1",
+    "upng-js": "^2.1.0"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
     "@types/react": "~19.2.2",
+    "@types/upng-js": "^2.1.5",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
     "patch-package": "^8.0.1",
