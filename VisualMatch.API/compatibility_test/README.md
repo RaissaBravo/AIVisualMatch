@@ -1,0 +1,1 @@
+Coloque aqui uma imagem fixa chamada `test_image.jpg` e execute `python generate_compatibility_reference.py`. Os JSONs gerados devem ser versionados junto da imagem e comparados à saída mobile com `allclose` (comece com `rtol=1e-4`, `atol=1e-5`; ajuste somente após medir diferenças entre runtimes).

@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block title %}Produtos · VisualMatch{% endblock %}{% block content %}
+<div class="heading"><div><h1>Produtos cadastrados</h1><p>Catálogo de referências visuais e embeddings.</p></div><a class="button" href="/admin/products/new">Novo Produto</a></div>
+{% if products %}<div class="cards">{% for product in products %}<article><div><span class="id">#{{ product.id }}</span><h2>{{ product.name }}</h2><p>{{ product.images|length }} imagem(ns)</p></div><div class="actions"><a class="button secondary" href="/admin/products/{{ product.id }}">Visualizar / editar</a><form method="post" action="/admin/products/{{ product.id }}/delete" onsubmit="return confirm('Excluir este produto e suas imagens?')"><button class="danger">Excluir</button></form></div></article>{% endfor %}</div>{% else %}<section class="empty"><h2>Nenhum produto ainda</h2><p>Cadastre o primeiro produto e suas fotos de referência.</p></section>{% endif %}
+{% endblock %}
