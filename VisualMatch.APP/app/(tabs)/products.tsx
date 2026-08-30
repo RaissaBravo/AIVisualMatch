@@ -4,11 +4,11 @@ import {
   Alert,
   FlatList,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ProductListItem } from "@/src/components/ProductListItem";
 import { useProducts } from "@/src/hooks/useProducts";
 import { type Theme, useTheme, useThemedStyles } from "@/src/theme/theme";
@@ -41,7 +41,7 @@ export default function ProductsScreen() {
       );
   };
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Produtos</Text>

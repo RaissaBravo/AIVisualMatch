@@ -4,12 +4,12 @@ import {
   AppState,
   Linking,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Camera,
   useCameraDevice,
@@ -70,7 +70,7 @@ export default function CameraScreen() {
 
   if (!permission.hasPermission)
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.permission}>
           <Text style={styles.permissionTitle}>Permissão da câmera</Text>
           <Text style={styles.permissionText}>
@@ -96,13 +96,13 @@ export default function CameraScreen() {
     );
   if (!device)
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <LoadingView message="Câmera traseira indisponível." />
       </SafeAreaView>
     );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.title}>Câmera</Text>
         <Text style={styles.subtitle}>Reconhecimento 100% offline</Text>
