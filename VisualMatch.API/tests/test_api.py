@@ -1,3 +1,6 @@
+import io
+import zipfile
+
 import numpy as np
 
 
@@ -33,3 +36,52 @@ def test_invalid_image_is_rejected_without_product(client):
     response = client.post("/api/products", data={"name": "Inválido"}, files=[("images", ("fake.jpg", b"not-image", "image/jpeg"))])
     assert response.status_code == 422
     assert client.get("/api/products").json() == []
+
+
+def test_admin_backup_and_restore_round_trip(client, jpeg_bytes):
+    created = client.post(
+        "/api/products",
+        data={"name": "Produto original"},
+        files=[("images", ("foto.jpg", jpeg_bytes, "image/jpeg"))],
+    ).json()
+
+    downloaded = client.get("/admin/backup")
+    assert downloaded.status_code == 200
+    assert downloaded.headers["content-type"] == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(downloaded.content)) as archive:
+        names = archive.namelist()
+        assert "data/products.db" in names
+        assert any(name.startswith(f"images/{created['id']}/") for name in names)
+
+    assert client.delete(f"/api/products/{created['id']}").status_code == 204
+    assert client.get("/api/products").json() == []
+
+    restored = client.post(
+        "/admin/restore",
+        files={"backup": ("visualmatch-backup.zip", downloaded.content, "application/zip")},
+        follow_redirects=False,
+    )
+    assert restored.status_code == 303
+    products = client.get("/api/products").json()
+    assert products[0]["id"] == created["id"]
+    assert products[0]["name"] == "Produto original"
+    detail = client.get(f"/api/products/{created['id']}").json()
+    restored_backup = client.get("/admin/backup")
+    with zipfile.ZipFile(io.BytesIO(restored_backup.content)) as archive:
+        image_name = detail["images"][0]["url"].lstrip("/")
+        assert archive.read(image_name) == jpeg_bytes
+
+
+def test_admin_restore_rejects_zip_outside_expected_structure(client):
+    client.post("/api/products", data={"name": "Deve permanecer"})
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("../products.db", b"invalid")
+
+    response = client.post(
+        "/admin/restore",
+        files={"backup": ("backup.zip", buffer.getvalue(), "application/zip")},
+    )
+    assert response.status_code == 422
+    assert "caminho inválido" in response.text
+    assert client.get("/api/products").json()[0]["name"] == "Deve permanecer"

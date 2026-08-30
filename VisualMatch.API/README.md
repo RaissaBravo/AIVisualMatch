@@ -82,6 +82,11 @@ Embeddings normalizados permitem similaridade de cosseno por produto escalar: `s
 - `POST /api/products/{id}/regenerate-embeddings`
 - `POST /api/regenerate-all-embeddings`
 
+Na tela administrativa, **Baixar banco de dados** gera `visualmatch-backup.zip` com
+`data/products.db` e a árvore `images/`. **Sobrescrever banco de dados** aceita um
+ZIP nesse mesmo formato, valida integralmente o SQLite e as imagens e só então
+substitui o catálogo atual.
+
 `GET /api/products` retorna somente `id`, `name` e uma lista de embeddings por foto, sem paths internos. O detalhe também fornece metadados e URL pública de cada imagem.
 
 ## Compatibilidade Python/mobile
