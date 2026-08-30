@@ -4,6 +4,10 @@ VisualMatch é um sistema de reconhecimento visual de produtos composto por uma 
 
 Depois da sincronização, a captura, a inferência e a comparação acontecem localmente no aparelho. As fotos capturadas pela câmera não são enviadas para a API, e os produtos já sincronizados continuam disponíveis sem conexão.
 
+| Python Backend (API / Admin) | React-Native App |
+| -------- | -------- |
+| <img width="600" height="470" alt="image" src="https://github.com/user-attachments/assets/e57921b1-e1c0-45aa-b11f-1ccc22ac01db" /> | <img width="320" height="694" alt="image" src="https://github.com/user-attachments/assets/a8fa5076-211f-41b7-b4ac-d6043d95d1ed" /> |
+
 ## Componentes
 
 - `VisualMatch.API`: FastAPI, painel administrativo, SQLite, armazenamento de imagens e geração de embeddings com ONNX Runtime.
