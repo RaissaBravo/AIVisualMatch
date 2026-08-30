@@ -1,1 +1,1 @@
-export { useProducts } from '@/src/context/ProductsContext';
+export { useProducts } from "@/src/context/ProductsContext";
