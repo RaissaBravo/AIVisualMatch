@@ -22,12 +22,14 @@ import { LoadingView } from "@/src/components/LoadingView";
 import { ROI_HEIGHT_RATIO, ROI_WIDTH_RATIO } from "@/src/config/recognition";
 import { useProductRecognition } from "@/src/hooks/useProductRecognition";
 import { useProducts } from "@/src/hooks/useProducts";
+import { type Theme, useThemedStyles } from "@/src/theme/theme";
 import type { Size } from "@/src/utils/crop";
 
 const PHOTO_RESOLUTION = { width: 1280, height: 960 } as const;
 
 export default function CameraScreen() {
   const { products, modelInfo } = useProducts();
+  const styles = useThemedStyles(createStyles);
   const permission = useCameraPermission();
   const device = useCameraDevice("back");
   const output = usePhotoOutput({
@@ -143,47 +145,56 @@ export default function CameraScreen() {
     </SafeAreaView>
   );
 }
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f8fafc" },
-  header: {
-    backgroundColor: "#0f172a",
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 14,
-  },
-  title: { color: "#fff", fontSize: 28, fontWeight: "800" },
-  subtitle: { color: "#94a3b8" },
-  preview: { backgroundColor: "#020617", overflow: "hidden" },
-  instruction: {
-    position: "absolute",
-    bottom: 16,
-    alignSelf: "center",
-    backgroundColor: "rgba(15,23,42,.82)",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  instructionText: { color: "#fff", fontWeight: "600" },
-  error: {
-    color: "#b91c1c",
-    backgroundColor: "#fee2e2",
-    padding: 10,
-    fontSize: 12,
-  },
-  permission: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-    gap: 16,
-  },
-  permissionTitle: { fontSize: 24, fontWeight: "800", color: "#0f172a" },
-  permissionText: { color: "#475569", textAlign: "center", lineHeight: 21 },
-  action: {
-    backgroundColor: "#2563eb",
-    paddingHorizontal: 20,
-    paddingVertical: 13,
-    borderRadius: 12,
-  },
-  actionText: { color: "#fff", fontWeight: "700" },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.background },
+    header: {
+      backgroundColor: theme.headerBackground,
+      paddingHorizontal: 20,
+      paddingTop: 18,
+      paddingBottom: 14,
+    },
+    title: { color: theme.headerTitle, fontSize: 28, fontWeight: "800" },
+    subtitle: { color: theme.headerSubtitle },
+    preview: { backgroundColor: theme.cameraBackground, overflow: "hidden" },
+    instruction: {
+      position: "absolute",
+      bottom: 16,
+      alignSelf: "center",
+      backgroundColor: theme.overlay,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+    },
+    instructionText: { color: theme.overlayText, fontWeight: "600" },
+    error: {
+      color: theme.danger,
+      backgroundColor: theme.dangerBackground,
+      padding: 10,
+      fontSize: 12,
+    },
+    permission: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 32,
+      gap: 16,
+    },
+    permissionTitle: {
+      fontSize: 24,
+      fontWeight: "800",
+      color: theme.textPrimary,
+    },
+    permissionText: {
+      color: theme.textMuted,
+      textAlign: "center",
+      lineHeight: 21,
+    },
+    action: {
+      backgroundColor: theme.accent,
+      paddingHorizontal: 20,
+      paddingVertical: 13,
+      borderRadius: 12,
+    },
+    actionText: { color: theme.accentText, fontWeight: "700" },
+  });

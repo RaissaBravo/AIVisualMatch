@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { DetectionResult } from "@/src/types/Product";
+import { type Theme, useThemedStyles } from "@/src/theme/theme";
 export function DetectionResults({
   results,
   analyzing,
@@ -7,6 +8,7 @@ export function DetectionResults({
   results: DetectionResult[];
   analyzing: boolean;
 }) {
+  const styles = useThemedStyles(createStyles);
   const hasMatch = results.some((result) => result.isMatch);
   return (
     <View style={styles.root}>
@@ -48,24 +50,35 @@ export function DetectionResults({
     </View>
   );
 }
-const styles = StyleSheet.create({
-  root: { padding: 18, backgroundColor: "#f8fafc", gap: 9, flex: 1, paddingBottom: 0},
-  heading: { flexDirection: "row", justifyContent: "space-between" },
-  title: { fontSize: 19, fontWeight: "800", color: "#0f172a" },
-  analyzing: { color: "#2563eb" },
-  empty: { color: "#64748b", paddingVertical: 14 },
-  summary: { fontWeight: "700" },
-  success: { color: "#15803d" },
-  miss: { color: "#b45309" },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: "#fff",
-  },
-  match: { backgroundColor: "#dcfce7", borderWidth: 1, borderColor: "#86efac" },
-  name: { color: "#1e293b", fontWeight: "600" },
-  score: { color: "#64748b", fontWeight: "800" },
-  scoreMatch: { color: "#15803d" },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    root: {
+      padding: 18,
+      backgroundColor: theme.background,
+      gap: 9,
+      flex: 1,
+      paddingBottom: 0,
+    },
+    heading: { flexDirection: "row", justifyContent: "space-between" },
+    title: { fontSize: 19, fontWeight: "800", color: theme.textPrimary },
+    analyzing: { color: theme.accent },
+    empty: { color: theme.textMuted, paddingVertical: 14 },
+    summary: { fontWeight: "700" },
+    success: { color: theme.success },
+    miss: { color: theme.warning },
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: theme.card,
+    },
+    match: {
+      backgroundColor: theme.successBackground,
+      borderWidth: 1,
+      borderColor: theme.successBorder,
+    },
+    name: { color: theme.textBody, fontWeight: "600" },
+    score: { color: theme.textMuted, fontWeight: "800" },
+    scoreMatch: { color: theme.success },
+  });

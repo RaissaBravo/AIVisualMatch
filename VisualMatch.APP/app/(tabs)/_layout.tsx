@@ -1,11 +1,19 @@
 import { SymbolView } from "expo-symbols";
 import { Tabs } from "expo-router";
+import { useTheme } from "@/src/theme/theme";
 
 export default function TabLayout() {
+  const theme = useTheme();
   return (
     <Tabs
       initialRouteName="products"
-      screenOptions={{ headerShown: false, tabBarActiveTintColor: "#2563eb" }}
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.accent,
+        tabBarInactiveTintColor: theme.tabInactive,
+        tabBarStyle: { backgroundColor: theme.card },
+        sceneStyle: { backgroundColor: theme.background },
+      }}
     >
       <Tabs.Screen
         name="products"

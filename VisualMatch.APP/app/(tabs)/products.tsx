@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { ProductListItem } from "@/src/components/ProductListItem";
 import { useProducts } from "@/src/hooks/useProducts";
+import { type Theme, useTheme, useThemedStyles } from "@/src/theme/theme";
 
 export default function ProductsScreen() {
   const {
@@ -23,6 +24,8 @@ export default function ProductsScreen() {
     usingOfflineData,
     sync,
   } = useProducts();
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [message, setMessage] = useState<string | null>(null);
   const refresh = async () => {
     const ok = await sync();
@@ -52,7 +55,7 @@ export default function ProductsScreen() {
           style={styles.button}
         >
           {isSyncing ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.accentText} />
           ) : (
             <Text style={styles.refresh}>↻</Text>
           )}
@@ -91,38 +94,39 @@ export default function ProductsScreen() {
     </SafeAreaView>
   );
 }
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f8fafc" },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 14,
-    backgroundColor: "#0f172a",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: { color: "#fff", fontSize: 28, fontWeight: "800" },
-  subtitle: { color: "#94a3b8", marginTop: 2 },
-  button: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: "#2563eb",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  refresh: { color: "#fff", fontSize: 28, lineHeight: 30 },
-  meta: { padding: 16, gap: 4 },
-  sync: { color: "#64748b", fontSize: 12 },
-  warning: { color: "#b45309", fontWeight: "600" },
-  error: { color: "#b91c1c", fontWeight: "600" },
-  message: { color: "#334155" },
-  list: { padding: 16, paddingTop: 0, flexGrow: 1 },
-  empty: {
-    color: "#64748b",
-    textAlign: "center",
-    marginTop: 60,
-    paddingHorizontal: 30,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.background },
+    header: {
+      paddingHorizontal: 20,
+      paddingTop: 18,
+      paddingBottom: 14,
+      backgroundColor: theme.headerBackground,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    title: { color: theme.headerTitle, fontSize: 28, fontWeight: "800" },
+    subtitle: { color: theme.headerSubtitle, marginTop: 2 },
+    button: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: theme.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    refresh: { color: theme.accentText, fontSize: 28, lineHeight: 30 },
+    meta: { padding: 16, gap: 4 },
+    sync: { color: theme.textMuted, fontSize: 12 },
+    warning: { color: theme.warning, fontWeight: "600" },
+    error: { color: theme.danger, fontWeight: "600" },
+    message: { color: theme.textBody },
+    list: { padding: 16, paddingTop: 0, flexGrow: 1 },
+    empty: {
+      color: theme.textMuted,
+      textAlign: "center",
+      marginTop: 60,
+      paddingHorizontal: 30,
+    },
+  });
