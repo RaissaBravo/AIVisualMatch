@@ -3,21 +3,19 @@ index 2a7bce1..4a5012d 100644
 --- a/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
 +++ b/node_modules/expo-modules-jsi/apple/Sources/ExpoModulesJSI-Cxx/include/RuntimeScheduler.h
 @@ -50,7 +50,7 @@ public:
-    * @param fn Function pointer that dispatches work through the host scheduler.
-    * Must remain valid for the lifetime of this object.
+    `scheduleTask` dispatches through `fn`, which the host implements against
+    the real react::RuntimeScheduler.
     */
 -  SWIFT_RETURNS_RETAINED RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
 +  RuntimeScheduler(void *scheduler, ScheduleFn fn) noexcept
        : nativeScheduler(scheduler), scheduleFn(fn) {}
  
    /**
-@@ -58,7 +58,7 @@ public:
-    * Creates a synchronous scheduler. Tasks run immediately on the calling thread.
-    * Used by standalone runtimes (e.g. tests, non-React usage) where there is
-    * no React scheduler.
+@@ -58,6 +58,6 @@ public:
+    caller's thread — intended for standalone runtimes (e.g. tests) that have
+    no React scheduler.
     */
 -  SWIFT_RETURNS_RETAINED RuntimeScheduler() {}
 +  RuntimeScheduler() {}
  
    RuntimeScheduler(const RuntimeScheduler &) = delete;
-   RuntimeScheduler &operator=(const RuntimeScheduler &) = delete;
