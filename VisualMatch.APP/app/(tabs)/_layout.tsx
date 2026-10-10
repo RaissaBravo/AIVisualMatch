@@ -45,6 +45,19 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="info"
+        options={{
+          title: "Info",
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ ios: "info.circle", android: "info", web: "info" }}
+              size={24}
+              tintColor={color}
+            />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

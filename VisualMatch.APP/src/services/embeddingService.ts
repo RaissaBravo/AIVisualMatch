@@ -10,8 +10,8 @@ import { l2Normalize } from "@/src/utils/math";
 
 let sessionPromise: Promise<ort.InferenceSession> | null = null;
 // Metro requires a static reference so the binary is bundled in the native app.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const modelAsset = Asset.fromModule(
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("../../assets/models/mobilenetv2_embedding.onnx"),
 );
 

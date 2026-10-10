@@ -101,6 +101,22 @@ Depois que o Development Build estiver instalado, inicie o Metro:
 npm run dev
 ```
 
+### Atalho para desenvolvimento no macOS
+
+Depois de concluir a instalação da API, do app e do `socat`, você pode iniciar API, proxy e Metro com um único comando executado na raiz do repositório:
+
+```bash
+./run-macos.sh
+```
+
+O script descobre o IP atual do Mac, inicia a API apenas em `127.0.0.1:8000`, publica a porta `8001` na rede local com `socat` e atualiza `EXPO_PUBLIC_API_BASE_URL=http://IP_DO_MAC:8001` no `.env.local`. O Metro é iniciado com o cache limpo para incorporar o novo endereço. Pressione `Ctrl+C` para encerrar os três processos.
+
+Na primeira utilização, caso o arquivo ainda não esteja executável, rode:
+
+```bash
+chmod +x run-macos.sh
+```
+
 ## Instalação no Windows
 
 No PowerShell:
