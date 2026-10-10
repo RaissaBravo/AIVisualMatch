@@ -1,12 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CameraPhotoOutput } from "react-native-vision-camera";
-import { DETECTION_INTERVAL_MS } from "@/src/config/recognition";
+import {
+  DETECTION_INTERVAL_MS,
+  SMOOTHING_WINDOW,
+} from "@/src/config/recognition";
 import {
   generateEmbedding,
   loadModel,
   preprocessRoi,
 } from "@/src/services/embeddingService";
-import { findBestMatches } from "@/src/services/matchingService";
+import { buildEmbeddingSpace } from "@/src/services/embeddingSpace";
+import type { EmbeddingSpace } from "@/src/services/embeddingSpace";
+import {
+  averageScores,
+  rankScores,
+  scoreProducts,
+} from "@/src/services/matchingService";
 import type { ModelInfo } from "@/src/types/ModelInfo";
 import type { DetectionResult, Product } from "@/src/types/Product";
 import type { Rect, Size } from "@/src/utils/crop";
@@ -24,6 +33,16 @@ export function useProductRecognition(
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const running = useRef(false);
+  const space = useMemo(() => buildEmbeddingSpace(products), [products]);
+  const history = useRef<{ space: EmbeddingSpace; frames: number[][] }>({
+    space,
+    frames: [],
+  });
+  const [previousSpace, setPreviousSpace] = useState(space);
+  if (previousSpace !== space) {
+    setPreviousSpace(space);
+    setResults([]);
+  }
   useEffect(() => {
     if (!modelInfo) return;
     loadModel()
@@ -34,7 +53,7 @@ export function useProductRecognition(
       .finally(() => setModelLoading(false));
   }, [modelInfo]);
   const detect = useCallback(async () => {
-    if (running.current || !modelInfo || !products.length || preview.width <= 0)
+    if (running.current || !modelInfo || !space.products.length || preview.width <= 0)
       return;
     running.current = true;
     setAnalyzing(true);
@@ -56,9 +75,15 @@ export function useProductRecognition(
           roi,
           modelInfo,
         );
-        setResults(
-          findBestMatches(await generateEmbedding(tensor, modelInfo), products),
-        );
+        const embedding = await generateEmbedding(tensor, modelInfo);
+        const previous =
+          history.current.space === space ? history.current.frames : [];
+        const frames = [
+          ...previous,
+          scoreProducts(embedding, space),
+        ].slice(-SMOOTHING_WINDOW);
+        history.current = { space, frames };
+        setResults(rankScores(averageScores(frames), space));
         setError(null);
       } finally {
         photo.dispose();
@@ -69,7 +94,7 @@ export function useProductRecognition(
       running.current = false;
       setAnalyzing(false);
     }
-  }, [modelInfo, output, preview, products, roi]);
+  }, [modelInfo, output, preview, space, roi]);
   useEffect(() => {
     if (!enabled) return;
     const initial = setTimeout(() => void detect(), 0);

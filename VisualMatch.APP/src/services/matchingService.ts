@@ -1,30 +1,63 @@
-import { MATCH_THRESHOLD, MAX_RESULTS } from "@/src/config/recognition";
-import type { DetectionResult, Product } from "@/src/types/Product";
-import { dotProduct } from "@/src/utils/math";
+import {
+  MATCH_MARGIN,
+  MATCH_THRESHOLD,
+  MAX_RESULTS,
+} from "@/src/config/recognition";
+import type { EmbeddingSpace } from "@/src/services/embeddingSpace";
+import type { DetectionResult } from "@/src/types/Product";
+import { centerAndNormalize, dotProduct } from "@/src/utils/math";
 export const cosineSimilarity = (a: ArrayLike<number>, b: ArrayLike<number>) =>
   dotProduct(a, b);
-export function findBestMatches(
+/** Similarity of the query against every product, aligned with space.products. */
+export function scoreProducts(
   query: ArrayLike<number>,
-  products: Product[],
+  space: EmbeddingSpace,
+): number[] {
+  const centered = centerAndNormalize(query, space.mean);
+  if (!centered) return space.products.map(() => -1);
+  return space.products.map((product) => {
+    let best = -1;
+    for (const reference of product.references)
+      best = Math.max(best, cosineSimilarity(centered, reference));
+    return best;
+  });
+}
+export function averageScores(frames: number[][]): number[] {
+  const [first] = frames;
+  if (!first) return [];
+  const total = new Array<number>(first.length).fill(0);
+  for (const frame of frames)
+    for (let i = 0; i < total.length; i += 1) total[i] += frame[i] ?? -1;
+  return total.map((value) => value / frames.length);
+}
+/**
+ * Only the top candidate can be a match, and it must beat the runner-up by
+ * MATCH_MARGIN — an absolute threshold alone cannot separate near-ties.
+ */
+export function rankScores(
+  scores: number[],
+  space: EmbeddingSpace,
   limit = MAX_RESULTS,
 ): DetectionResult[] {
-  return products
-    .flatMap((product) => {
-      let best = -Infinity;
-      for (const embedding of product.embeddings)
-        if (embedding.length === query.length)
-          best = Math.max(best, cosineSimilarity(query, embedding));
-      if (!Number.isFinite(best)) return [];
-      return [
-        {
-          productId: product.id,
-          productName: product.name,
-          similarity: best,
-          confidencePercent: Math.max(0, Math.min(100, best * 100)),
-          isMatch: best >= MATCH_THRESHOLD,
-        },
-      ];
-    })
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, limit);
+  const ranked = space.products
+    .map((product, index) => ({ product, similarity: scores[index] ?? -1 }))
+    .sort((a, b) => b.similarity - a.similarity);
+  const runnerUp = ranked[1]?.similarity ?? -1;
+  return ranked.slice(0, limit).map(({ product, similarity }, index) => ({
+    productId: product.id,
+    productName: product.name,
+    similarity,
+    confidencePercent: Math.max(0, Math.min(100, similarity * 100)),
+    isMatch:
+      index === 0 &&
+      similarity >= MATCH_THRESHOLD &&
+      similarity - runnerUp >= MATCH_MARGIN,
+  }));
+}
+export function findBestMatches(
+  query: ArrayLike<number>,
+  space: EmbeddingSpace,
+  limit = MAX_RESULTS,
+): DetectionResult[] {
+  return rankScores(scoreProducts(query, space), space, limit);
 }

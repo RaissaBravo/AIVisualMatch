@@ -22,13 +22,13 @@ export function DetectionResults({
         </Text>
       ) : (
         <>
-          {/* <Text
+          <Text
             style={[styles.summary, hasMatch ? styles.success : styles.miss]}
           >
             {hasMatch
               ? "✓ Produto identificado"
-              : "Nenhum produto identificado"}
-          </Text> */}
+              : "Nenhum produto identificado com confiança"}
+          </Text>
           <ScrollView contentContainerStyle={{ gap: 5, paddingBottom: 5 }} style={{ maxHeight: 200, flex: 1 }}>
           {results.map((result) => (
             <View
