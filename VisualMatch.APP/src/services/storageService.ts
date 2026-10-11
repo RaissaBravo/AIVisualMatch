@@ -4,6 +4,7 @@ import type { Product } from "@/src/types/Product";
 export const PRODUCTS_STORAGE_KEY = "@visualmatch/products/v1";
 export const MODEL_INFO_STORAGE_KEY = "@visualmatch/model-info/v1";
 export const LAST_SYNC_STORAGE_KEY = "@visualmatch/last-sync/v1";
+export const MODELS_STORAGE_KEY = "@visualmatch/models/v1";
 async function readJson<T>(key: string): Promise<T | null> {
   const raw = await AsyncStorage.getItem(key);
   if (!raw) return null;
@@ -16,15 +17,19 @@ async function readJson<T>(key: string): Promise<T | null> {
 export const getProducts = () => readJson<Product[]>(PRODUCTS_STORAGE_KEY);
 export const getModelInfo = () => readJson<ModelInfo>(MODEL_INFO_STORAGE_KEY);
 export const getLastSync = () => AsyncStorage.getItem(LAST_SYNC_STORAGE_KEY);
+export const getModels = () => readJson<ModelInfo[]>(MODELS_STORAGE_KEY);
 export const saveProducts = (products: Product[]) =>
   AsyncStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
 export const saveModelInfo = (info: ModelInfo) =>
   AsyncStorage.setItem(MODEL_INFO_STORAGE_KEY, JSON.stringify(info));
 export const saveLastSync = (timestamp: string) =>
   AsyncStorage.setItem(LAST_SYNC_STORAGE_KEY, timestamp);
+export const saveModels = (models: ModelInfo[]) =>
+  AsyncStorage.setItem(MODELS_STORAGE_KEY, JSON.stringify(models));
 export const clearProducts = () =>
   AsyncStorage.multiRemove([
     PRODUCTS_STORAGE_KEY,
     MODEL_INFO_STORAGE_KEY,
     LAST_SYNC_STORAGE_KEY,
+    MODELS_STORAGE_KEY,
   ]);

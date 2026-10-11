@@ -1,19 +1,20 @@
-import { Asset } from "expo-asset";
 import { File } from "expo-file-system";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import * as ort from "onnxruntime-react-native";
 import * as UPNG from "upng-js";
+import { localModelFile } from "@/src/services/modelStore";
 import type { ModelInfo } from "@/src/types/ModelInfo";
 import type { Rect, Size } from "@/src/utils/crop";
 import { calculateCropRegion } from "@/src/utils/crop";
 import { l2Normalize } from "@/src/utils/math";
 
-let sessionPromise: Promise<ort.InferenceSession> | null = null;
-// Metro requires a static reference so the binary is bundled in the native app.
-const modelAsset = Asset.fromModule(
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("../../assets/models/mobilenetv2_embedding.onnx"),
-);
+interface LoadedModel {
+  uri: string;
+  session: Promise<ort.InferenceSession>;
+  runs: number;
+  retired: boolean;
+}
+let current: LoadedModel | null = null;
 
 function validateContract(info: ModelInfo) {
   if (
@@ -27,18 +28,42 @@ function validateContract(info: ModelInfo) {
   if (!info.input_name || !info.output_name || !info.embedding_dimension)
     throw new Error("model-info não contém nomes ou dimensão do modelo.");
 }
-export async function loadModel(): Promise<ort.InferenceSession> {
-  if (!sessionPromise)
-    sessionPromise = (async () => {
-      await modelAsset.downloadAsync();
-      const uri = modelAsset.localUri ?? modelAsset.uri;
-      if (!uri) throw new Error("Asset ONNX não encontrado.");
-      return ort.InferenceSession.create(uri);
-    })().catch((error) => {
-      sessionPromise = null;
-      throw error;
+function release(model: LoadedModel) {
+  model.session.then((session) => session.release()).catch(() => undefined);
+}
+/**
+ * One session for the model in info. Switching models retires the previous
+ * session, which is released only after its in-flight inferences finish.
+ */
+function acquire(info: ModelInfo): LoadedModel {
+  const file = localModelFile(info);
+  if (!file)
+    throw new Error(
+      `Modelo ${info.name ?? info.model} ainda não foi baixado; sincronize com a API.`,
+    );
+  if (current?.uri !== file.uri) {
+    const previous = current;
+    const model: LoadedModel = {
+      uri: file.uri,
+      session: ort.InferenceSession.create(file.uri),
+      runs: 0,
+      retired: false,
+    };
+    model.session.catch(() => {
+      if (current === model) current = null;
     });
-  return sessionPromise;
+    current = model;
+    if (previous) {
+      previous.retired = true;
+      if (!previous.runs) release(previous);
+    }
+  }
+  return current;
+}
+export async function loadModel(
+  info: ModelInfo,
+): Promise<ort.InferenceSession> {
+  return acquire(info).session;
 }
 function rgbaToRgb(data: ArrayLike<number>, pixels: number): Uint8Array {
   if (data.length !== pixels * 4)
@@ -112,9 +137,16 @@ export async function generateEmbedding(
   info: ModelInfo,
 ): Promise<Float32Array> {
   validateContract(info);
-  const session = await loadModel();
+  const model = acquire(info);
   const feeds: Record<string, ort.Tensor> = { [info.input_name!]: tensor };
-  const output = (await session.run(feeds))[info.output_name!];
+  model.runs += 1;
+  let output: ort.Tensor | undefined;
+  try {
+    output = (await (await model.session).run(feeds))[info.output_name!];
+  } finally {
+    model.runs -= 1;
+    if (model.retired && !model.runs) release(model);
+  }
   if (!output)
     throw new Error(`Output ONNX ${info.output_name} não encontrado.`);
   const values = output.data as ArrayLike<number>;

@@ -64,7 +64,20 @@ export function parseModelInfo(payload: unknown): ModelInfo {
     throw new Error("Contrato do modelo incompleto.");
   return value as unknown as ModelInfo;
 }
-export const fetchProducts = async (dimension?: number | null) =>
-  parseProducts(await getJson("/api/products"), dimension);
-export const fetchModelInfo = async () =>
-  parseModelInfo(await getJson("/api/model-info"));
+/** Asks for the given model explicitly, so a model switch on the API mid-sync cannot mix vectors. */
+export const fetchProducts = async (
+  model: string,
+  dimension?: number | null,
+) =>
+  parseProducts(
+    await getJson(`/api/products?model=${encodeURIComponent(model)}`),
+    dimension,
+  );
+export function parseModels(payload: unknown): ModelInfo[] {
+  if (!Array.isArray(payload))
+    throw new Error("Resposta de modelos não é uma lista.");
+  return payload.map(parseModelInfo);
+}
+/** Every model the API keeps ready, with contract and coverage; feeds the model picker. */
+export const fetchModels = async () =>
+  parseModels(await getJson("/api/models"));

@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 from sqlalchemy.orm import Session
 
 from app import config
+from app.database import upgrade_schema
 
 DATABASE_IN_ZIP = "data/products.db"
 IMAGES_IN_ZIP = "images"
@@ -111,9 +112,12 @@ def validate_database(path: Path, images_dir: Path) -> None:
             image_columns = {row[1] for row in connection.execute("PRAGMA table_info(product_images)")}
             if not {"id", "name", "created_at", "updated_at"}.issubset(product_columns):
                 raise InvalidBackupError("A tabela products não possui o esquema esperado")
-            expected_image_columns = {"id", "product_id", "file_path", "file_name", "embedding", "created_at"}
+            expected_image_columns = {"id", "product_id", "file_path", "file_name", "created_at"}
             if not expected_image_columns.issubset(image_columns):
                 raise InvalidBackupError("A tabela product_images não possui o esquema esperado")
+            # Backups from before multi-model support keep the vector in product_images.embedding.
+            if "embedding" not in image_columns and "image_embeddings" not in tables:
+                raise InvalidBackupError("O banco não possui embeddings no esquema esperado")
             if connection.execute("PRAGMA foreign_key_check").fetchone():
                 raise InvalidBackupError("O banco possui referências inválidas")
             file_paths = [row[0] for row in connection.execute("SELECT file_path FROM product_images")]
@@ -162,7 +166,9 @@ def restore_backup(db: Session, archive_path: Path) -> None:
                 os.replace(config.IMAGES_DIR, old_images)
             os.replace(staged_database, current_database)
             os.replace(staged_images, config.IMAGES_DIR)
+            upgrade_schema(bind)
         except Exception:
+            bind.dispose()
             if current_database.exists():
                 current_database.unlink()
             if config.IMAGES_DIR.exists():

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CameraPhotoOutput } from "react-native-vision-camera";
 import {
   DETECTION_INTERVAL_MS,
+  matchRuleFor,
   SMOOTHING_WINDOW,
 } from "@/src/config/recognition";
 import {
@@ -45,7 +46,7 @@ export function useProductRecognition(
   }
   useEffect(() => {
     if (!modelInfo) return;
-    loadModel()
+    loadModel(modelInfo)
       .then(() => setError(null))
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Falha ao carregar modelo."),
@@ -83,7 +84,9 @@ export function useProductRecognition(
           scoreProducts(embedding, space),
         ].slice(-SMOOTHING_WINDOW);
         history.current = { space, frames };
-        setResults(rankScores(averageScores(frames), space));
+        setResults(
+          rankScores(averageScores(frames), space, matchRuleFor(modelInfo.model)),
+        );
         setError(null);
       } finally {
         photo.dispose();

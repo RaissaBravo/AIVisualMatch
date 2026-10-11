@@ -21,7 +21,7 @@ class ProductImageDetail(BaseModel):
     id: int
     file_name: str
     url: str
-    embedding: list[float]
+    embeddings: dict[str, list[float]]
     created_at: datetime
 
 

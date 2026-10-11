@@ -1,7 +1,7 @@
 import {
-  MATCH_MARGIN,
-  MATCH_THRESHOLD,
+  type MatchRule,
   MAX_RESULTS,
+  matchRuleFor,
 } from "@/src/config/recognition";
 import type { EmbeddingSpace } from "@/src/services/embeddingSpace";
 import type { DetectionResult } from "@/src/types/Product";
@@ -32,11 +32,12 @@ export function averageScores(frames: number[][]): number[] {
 }
 /**
  * Only the top candidate can be a match, and it must beat the runner-up by
- * MATCH_MARGIN — an absolute threshold alone cannot separate near-ties.
+ * the rule's margin — an absolute threshold alone cannot separate near-ties.
  */
 export function rankScores(
   scores: number[],
   space: EmbeddingSpace,
+  rule: MatchRule = matchRuleFor(),
   limit = MAX_RESULTS,
 ): DetectionResult[] {
   const ranked = space.products
@@ -50,14 +51,15 @@ export function rankScores(
     confidencePercent: Math.max(0, Math.min(100, similarity * 100)),
     isMatch:
       index === 0 &&
-      similarity >= MATCH_THRESHOLD &&
-      similarity - runnerUp >= MATCH_MARGIN,
+      similarity >= rule.threshold &&
+      similarity - runnerUp >= rule.margin,
   }));
 }
 export function findBestMatches(
   query: ArrayLike<number>,
   space: EmbeddingSpace,
+  rule: MatchRule = matchRuleFor(),
   limit = MAX_RESULTS,
 ): DetectionResult[] {
-  return rankScores(scoreProducts(query, space), space, limit);
+  return rankScores(scoreProducts(query, space), space, rule, limit);
 }

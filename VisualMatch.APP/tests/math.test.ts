@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { MATCH_RULES, matchRuleFor } from "../src/config/recognition";
 import { buildEmbeddingSpace } from "../src/services/embeddingSpace";
 import {
   averageScores,
@@ -98,4 +99,15 @@ test("produto sem embeddings utilizáveis fica fora do espaço", () => {
     built.products.map((product) => product.id),
     [1],
   );
+});
+test("cada modelo usa a própria regra de match", () => {
+  const built = space([
+    { id: 1, name: "A", embeddings: [[1, 0, 0]] },
+    { id: 2, name: "B", embeddings: [[0, 1, 0]] },
+  ]);
+  const strict = { threshold: 0.6, margin: 0.08 };
+  assert.equal(rankScores([0.5, 0.3], built)[0].isMatch, true);
+  assert.equal(rankScores([0.5, 0.3], built, strict)[0].isMatch, false);
+  assert.deepEqual(matchRuleFor("modelo-desconhecido"), MATCH_RULES.mobilenetv2);
+  assert.deepEqual(matchRuleFor("dinov2-small"), MATCH_RULES["dinov2-small"]);
 });

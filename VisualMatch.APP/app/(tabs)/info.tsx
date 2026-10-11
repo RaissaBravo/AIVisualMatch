@@ -1,9 +1,23 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/src/config/api";
-import { APP_MODEL_FILE, APP_MODEL_NAME } from "@/src/config/model";
+import { matchRuleFor } from "@/src/config/recognition";
 import { useProducts } from "@/src/hooks/useProducts";
+import { localModelFile } from "@/src/services/modelStore";
 import { type Theme, useThemedStyles } from "@/src/theme/theme";
+import type { ModelInfo } from "@/src/types/ModelInfo";
+
+function localModelStatus(info: ModelInfo | null) {
+  if (!info) return "Aguardando sincronização";
+  try {
+    const file = localModelFile(info);
+    return file
+      ? `Baixado (${(file.size / 1024 / 1024).toFixed(1)} MB)`
+      : "Não baixado — sincronize com a API";
+  } catch (error) {
+    return error instanceof Error ? error.message : "Desconhecido";
+  }
+}
 
 interface InfoRowProps {
   label: string;
@@ -25,6 +39,7 @@ function InfoRow({ label, value, styles }: InfoRowProps) {
 export default function InfoScreen() {
   const { modelInfo, lastSync, usingOfflineData } = useProducts();
   const styles = useThemedStyles(createStyles);
+  const rule = matchRuleFor(modelInfo?.model);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -52,10 +67,14 @@ export default function InfoScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Modelo da API</Text>
+          <Text style={styles.cardTitle}>Modelo em uso</Text>
           <InfoRow
             label="Modelo"
-            value={modelInfo?.model || "Aguardando sincronização"}
+            value={
+              modelInfo
+                ? `${modelInfo.name ?? modelInfo.model} (${modelInfo.model})`
+                : "Aguardando sincronização"
+            }
             styles={styles}
           />
           <InfoRow
@@ -84,12 +103,39 @@ export default function InfoScreen() {
             value={modelInfo?.embedding_dimension?.toString() || "—"}
             styles={styles}
           />
+          <InfoRow
+            label="Entrada"
+            value={
+              modelInfo
+                ? `${modelInfo.input_width}×${modelInfo.input_height} px`
+                : "—"
+            }
+            styles={styles}
+          />
+          <InfoRow
+            label="Licença"
+            value={modelInfo?.license || "—"}
+            styles={styles}
+          />
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Modelo do app</Text>
-          <InfoRow label="Modelo" value={APP_MODEL_NAME} styles={styles} />
-          <InfoRow label="Arquivo" value={APP_MODEL_FILE} styles={styles} />
+          <Text style={styles.cardTitle}>Arquivo no aparelho</Text>
+          <InfoRow
+            label="Arquivo local"
+            value={localModelStatus(modelInfo)}
+            styles={styles}
+          />
+          <InfoRow
+            label="MD5"
+            value={modelInfo?.model_md5 || "—"}
+            styles={styles}
+          />
+          <InfoRow
+            label="Regra de match"
+            value={`limiar ${rule.threshold} · margem ${rule.margin}`}
+            styles={styles}
+          />
           <InfoRow
             label="Execução"
             value="ONNX Runtime no dispositivo"
@@ -98,8 +144,9 @@ export default function InfoScreen() {
         </View>
 
         <Text style={styles.note}>
-          A API e o aplicativo devem usar o mesmo modelo ONNX para que os
-          embeddings sejam compatíveis.
+          A API mantém os embeddings de todos os modelos. Troque o modelo no
+          topo da tela Câmera: o app baixa o arquivo ONNX (verificado por MD5) e
+          os embeddings do modelo escolhido.
         </Text>
       </ScrollView>
     </SafeAreaView>

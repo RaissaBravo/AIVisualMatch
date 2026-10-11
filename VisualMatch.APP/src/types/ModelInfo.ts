@@ -1,7 +1,13 @@
 export interface ModelInfo {
   model: string;
+  name?: string;
   version: string;
+  license?: string;
   model_file?: string;
+  /** Path on the API to download the exact ONNX it uses for this model. */
+  model_url?: string;
+  model_size?: number | null;
+  model_md5?: string | null;
   available: boolean;
   error?: string | null;
   input_name: string | null;
@@ -18,4 +24,8 @@ export interface ModelInfo {
   normalization: { location?: string; mean?: number[]; std?: number[] };
   l2_normalization: boolean;
   embedding_dimension: number | null;
+  /** Coverage reported by /api/models: images with a current embedding of this model. */
+  embedded_images?: number;
+  pending_images?: number;
+  total_images?: number;
 }

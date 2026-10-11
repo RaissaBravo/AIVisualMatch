@@ -19,6 +19,7 @@ import {
 import { DetectionFrame } from "@/src/components/DetectionFrame";
 import { DetectionResults } from "@/src/components/DetectionResults";
 import { LoadingView } from "@/src/components/LoadingView";
+import { ModelPicker } from "@/src/components/ModelPicker";
 import { ROI_HEIGHT_RATIO, ROI_WIDTH_RATIO } from "@/src/config/recognition";
 import { useProductRecognition } from "@/src/hooks/useProductRecognition";
 import { useProducts } from "@/src/hooks/useProducts";
@@ -104,8 +105,11 @@ export default function CameraScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Câmera</Text>
-        <Text style={styles.subtitle}>Reconhecimento 100% offline</Text>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Câmera</Text>
+          <Text style={styles.subtitle}>Reconhecimento 100% offline</Text>
+        </View>
+        <ModelPicker />
       </View>
       <View
         style={[styles.preview, { height: previewHeight }]}
@@ -153,7 +157,12 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 20,
       paddingTop: 18,
       paddingBottom: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
     },
+    headerText: { flexShrink: 1 },
     title: { color: theme.headerTitle, fontSize: 28, fontWeight: "800" },
     subtitle: { color: theme.headerSubtitle },
     preview: { backgroundColor: theme.cameraBackground, overflow: "hidden" },

@@ -6,23 +6,55 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app import config
 from app.database import get_db
 from app.models import Product
-from app.routers.products_api import product_or_404, regenerate_product, service_from
+from app.routers.products_api import WITH_EMBEDDINGS, model_or_404, model_summaries, models_from, product_or_404, regenerate_product, translate_image_error
 from app.services.backup_service import InvalidBackupError, create_backup, restore_backup
-from app.services.image_service import add_uploaded_images, delete_image_file, delete_product_directory
+from app.services.embedding_service import ModelRegistry
+from app.services.image_service import add_uploaded_images, delete_image_file, delete_product_directory, embedding_state, generate_all_pending_embeddings, generate_pending_embeddings
 
 router = APIRouter(tags=["admin"])
 templates = Jinja2Templates(directory=str(config.BASE_DIR / "app" / "templates"))
+templates.env.globals["embedding_state"] = embedding_state
+
+
+def render_index(request: Request, db: Session, status_code: int = 200, **context):
+    models = models_from(request)
+    products = db.scalars(select(Product).options(WITH_EMBEDDINGS).order_by(Product.id)).all()
+    # Per product: loaded models that still lack a current embedding for some of its images.
+    incomplete = {
+        product.id: [service.spec.name for service in models.available if any(embedding_state(image, service) != "current" for image in product.images)]
+        for product in products
+    }
+    context = {"products": products, "incomplete": incomplete, "models": model_summaries(db, models), **context}
+    return templates.TemplateResponse(request=request, name="products.html", context=context, status_code=status_code)
+
+
+def generation_message(models: ModelRegistry, model_id: str, generated: int, failures: list[str]) -> str:
+    message = f"{generated} embeddings de {models.get(model_id).spec.name} gerados"
+    return f"{message}; {len(failures)} imagens falharam: {'; '.join(failures[:3])}" if failures else message
 
 
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
-    products = db.scalars(select(Product).options(selectinload(Product.images)).order_by(Product.id)).all()
-    return templates.TemplateResponse(request=request, name="products.html", context={"products": products, "success": request.query_params.get("success")})
+    return render_index(request, db, success=request.query_params.get("success"))
+
+
+@router.post("/admin/models/{model_id}/generate")
+def generate_model_embeddings(request: Request, model_id: str, db: Session = Depends(get_db)):
+    """Only the missing or outdated embeddings; current ones are kept."""
+    model_or_404(models_from(request), model_id)
+    try:
+        generated, failures = generate_pending_embeddings(db, models_from(request), model_id)
+    except Exception as exc:
+        return render_index(request, db, status_code=422, error=translate_image_error(exc).detail)
+    message = generation_message(models_from(request), model_id, generated, failures)
+    if failures:
+        return render_index(request, db, status_code=422, error=message)
+    return RedirectResponse(f"/?success={message}", status_code=303)
 
 
 @router.get("/admin/backup")
@@ -42,6 +74,8 @@ async def upload_backup(request: Request, backup: UploadFile = File(...), db: Se
             handle.write(chunk)
         handle.close()
         restore_backup(db, temporary_path)
+        # The restored catalog may lack embeddings of some models.
+        results = generate_all_pending_embeddings(db, models_from(request))
     except InvalidBackupError as exc:
         handle.close()
         return render_restore_error(request, db, str(exc))
@@ -49,12 +83,14 @@ async def upload_backup(request: Request, backup: UploadFile = File(...), db: Se
         handle.close()
         temporary_path.unlink(missing_ok=True)
         await backup.close()
-    return RedirectResponse("/?success=Backup restaurado com sucesso", status_code=303)
+    generated = sum(count for count, _ in results.values())
+    failed = sum(len(failures) for _, failures in results.values())
+    message = f"Backup restaurado com sucesso; {generated} embeddings gerados" + (f", {failed} imagens falharam" if failed else "")
+    return RedirectResponse(f"/?success={message}", status_code=303)
 
 
 def render_restore_error(request: Request, db: Session, message: str):
-    products = db.scalars(select(Product).options(selectinload(Product.images)).order_by(Product.id)).all()
-    return templates.TemplateResponse(request=request, name="products.html", context={"products": products, "error": message}, status_code=422)
+    return render_index(request, db, status_code=422, error=message)
 
 
 @router.get("/admin/products/new", response_class=HTMLResponse)
@@ -68,7 +104,7 @@ async def create(request: Request, name: str = Form(...), images: list[UploadFil
     db.add(product); db.commit(); db.refresh(product)
     try:
         if images:
-            await add_uploaded_images(db, product, images, service_from(request))
+            await add_uploaded_images(db, product, images, models_from(request))
     except Exception as exc:
         db.delete(product); db.commit(); delete_product_directory(product.id)
         return templates.TemplateResponse(request=request, name="product_form.html", context={"product": None, "error": str(exc)}, status_code=422)
@@ -86,7 +122,7 @@ async def save(request: Request, product_id: int, name: str = Form(...), images:
     product.name = name.strip(); db.commit()
     try:
         if images:
-            await add_uploaded_images(db, product, images, service_from(request))
+            await add_uploaded_images(db, product, images, models_from(request))
     except Exception as exc:
         return templates.TemplateResponse(request=request, name="product_form.html", context={"product": product_or_404(db, product_id), "error": str(exc)}, status_code=422)
     return RedirectResponse(f"/admin/products/{product_id}", status_code=303)
@@ -112,7 +148,7 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
 def regenerate(request: Request, product_id: int, db: Session = Depends(get_db)):
     product = product_or_404(db, product_id)
     try:
-        regenerate_product(db, product, service_from(request))
+        regenerate_product(db, product, models_from(request))
         return RedirectResponse(f"/admin/products/{product_id}", status_code=303)
     except Exception as exc:
         return templates.TemplateResponse(request=request, name="product_form.html", context={"product": product, "error": str(exc)}, status_code=422)

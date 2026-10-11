@@ -16,6 +16,7 @@ import { type Theme, useTheme, useThemedStyles } from "@/src/theme/theme";
 export default function ProductsScreen() {
   const {
     products,
+    modelInfo,
     lastSync,
     isLoadingLocal,
     isSyncing,
@@ -45,7 +46,10 @@ export default function ProductsScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Produtos</Text>
-          <Text style={styles.subtitle}>{products.length} cadastrados</Text>
+          <Text style={styles.subtitle}>
+            {products.length} cadastrados
+            {modelInfo ? ` · ${modelInfo.name ?? modelInfo.model}` : ""}
+          </Text>
         </View>
         <Pressable
           accessibilityRole="button"

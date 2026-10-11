@@ -9,6 +9,7 @@ API_PORT="${VISUALMATCH_API_PORT:-8000}"
 PROXY_PORT="${VISUALMATCH_PROXY_PORT:-8001}"
 METRO_PORT="${VISUALMATCH_METRO_PORT:-8081}"
 ENV_FILE="$APP_DIR/.env.local"
+EXPORT_VENV="$API_DIR/.venv-export"
 API_PID=""
 SOCAT_PID=""
 
@@ -51,6 +52,19 @@ if lsof -nP -iTCP:"$METRO_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   fail "a porta $METRO_PORT já está sendo usada, provavelmente por outro Metro. Encerre-o antes de continuar."
 fi
 
+# The ONNX files are not in git: export every registered model that is missing.
+MISSING_MODELS="$(cd "$API_DIR" && .venv/bin/python -c 'from app import config; print(" ".join(spec.id for spec in config.MODELS.values() if not spec.path.exists()))')" \
+  || fail "não foi possível ler o registro de modelos da API."
+if [[ -n "$MISSING_MODELS" ]]; then
+  printf 'Modelos ausentes em VisualMatch.API/models (%s); exportando a partir dos pesos oficiais.\n' "$MISSING_MODELS"
+  if [[ ! -x "$EXPORT_VENV/bin/python" ]]; then
+    printf 'Primeira exportação: instalando PyTorch em %s (alguns minutos).\n' "$EXPORT_VENV"
+    "$API_DIR/.venv/bin/python" -m venv "$EXPORT_VENV"
+    "$EXPORT_VENV/bin/pip" install -q -r "$API_DIR/requirements-export.txt" || { rm -rf "$EXPORT_VENV"; fail "não foi possível instalar requirements-export.txt."; }
+  fi
+  (cd "$API_DIR" && "$EXPORT_VENV/bin/python" scripts/export_models.py) || fail "não foi possível exportar os modelos: $MISSING_MODELS."
+fi
+
 NETWORK_INTERFACE="$(route -n get default 2>/dev/null | awk '/interface:/{print $2; exit}')"
 MAC_IP=""
 if [[ -n "$NETWORK_INTERFACE" ]]; then
@@ -88,6 +102,7 @@ printf 'VisualMatch\n'
 printf '  API local:       http://127.0.0.1:%s\n' "$API_PORT"
 printf '  API no celular:  %s\n' "$EXPO_PUBLIC_API_BASE_URL"
 printf '  Model info:      %s/api/model-info\n' "$EXPO_PUBLIC_API_BASE_URL"
+printf '  Modelos:         todos prontos na API; escolha qual usar no app\n'
 printf '  .env.local:      atualizado\n'
 printf '\nUse Ctrl+C para encerrar API, proxy e Metro.\n\n'
 

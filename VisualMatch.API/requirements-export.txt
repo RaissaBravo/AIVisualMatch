@@ -1,3 +1,9 @@
-torch>=2.4,<3
-torchvision>=0.19,<1
-onnx>=1.16,<2
+# Ambiente de exportação dos modelos ONNX (scripts/export_models.py).
+# Versões fixas: com elas a exportação gera arquivos idênticos byte a byte
+# (mesmo MD5), então outra máquina reaproveita os embeddings já gerados.
+-r requirements.txt
+torch==2.14.1
+torchvision==0.29.1
+timm==1.0.30
+open_clip_torch==3.3.0
+onnx==1.23.2

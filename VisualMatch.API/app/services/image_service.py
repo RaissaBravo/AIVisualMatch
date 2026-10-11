@@ -7,11 +7,12 @@ from pathlib import Path
 import numpy as np
 from fastapi import UploadFile
 from PIL import Image, UnidentifiedImageError
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
 
 from app import config
-from app.models import Product, ProductImage
-from app.services.embedding_service import EmbeddingService
+from app.models import ImageEmbedding, Product, ProductImage
+from app.services.embedding_service import EmbeddingError, EmbeddingService, ModelRegistry
 
 
 class InvalidImageError(ValueError):
@@ -26,7 +27,52 @@ def embedding_from_json(value: str) -> list[float]:
     return [float(item) for item in json.loads(value)]
 
 
-async def add_uploaded_images(db: Session, product: Product, uploads: list[UploadFile], embedding_service: EmbeddingService) -> list[ProductImage]:
+def store_embeddings(image: ProductImage, embeddings: dict[str, np.ndarray], models: ModelRegistry) -> None:
+    for model_id, vector in embeddings.items():
+        record = image.embedding_for(model_id)
+        if record is None:
+            record = ImageEmbedding(model_id=model_id)
+            image.embeddings.append(record)
+        record.embedding = embedding_to_json(vector)
+        record.model_md5 = models.get(model_id).file_md5
+
+
+def is_current(stored_md5: str | None, service: EmbeddingService) -> bool:
+    """Rows saved before versioning have no md5 and are trusted as made by the current file."""
+    return stored_md5 is None or stored_md5 == service.file_md5
+
+
+def embedding_state(image: ProductImage, service: EmbeddingService) -> str:
+    record = image.embedding_for(service.spec.id)
+    if record is None:
+        return "missing"
+    return "current" if is_current(record.model_md5, service) else "outdated"
+
+
+def generate_pending_embeddings(db: Session, models: ModelRegistry, model_id: str) -> tuple[int, list[str]]:
+    """Fills one model's missing or outdated embeddings; an unreadable image is reported, not fatal."""
+    service = models.get(model_id)
+    service.require_model()
+    images = db.scalars(select(ProductImage).options(selectinload(ProductImage.embeddings)).order_by(ProductImage.id)).all()
+    generated, failures = 0, []
+    for image in images:
+        if embedding_state(image, service) == "current":
+            continue
+        try:
+            store_embeddings(image, {model_id: service.generate_embedding(config.BASE_DIR / image.file_path)}, models)
+            generated += 1
+        except EmbeddingError as exc:
+            failures.append(f"{image.file_path}: {exc}")
+    db.commit()
+    return generated, failures
+
+
+def generate_all_pending_embeddings(db: Session, models: ModelRegistry) -> dict[str, tuple[int, list[str]]]:
+    """Keeps every loaded model ready, so the app can switch to any of them."""
+    return {service.spec.id: generate_pending_embeddings(db, models, service.spec.id) for service in models.available}
+
+
+async def add_uploaded_images(db: Session, product: Product, uploads: list[UploadFile], models: ModelRegistry) -> list[ProductImage]:
     created_paths: list[Path] = []
     records: list[ProductImage] = []
     product_dir = config.IMAGES_DIR / str(product.id)
@@ -52,8 +98,9 @@ async def add_uploaded_images(db: Session, product: Product, uploads: list[Uploa
             except OSError as exc:
                 raise InvalidImageError(f"Não foi possível salvar a imagem: {exc}") from exc
             created_paths.append(path)
-            embedding = embedding_service.generate_embedding(path)
-            record = ProductImage(product_id=product.id, file_path=str(path.relative_to(config.BASE_DIR)), file_name=(upload.filename or path.name)[:255], embedding=embedding_to_json(embedding))
+            embeddings = models.generate_embeddings(path)
+            record = ProductImage(product_id=product.id, file_path=str(path.relative_to(config.BASE_DIR)), file_name=(upload.filename or path.name)[:255], embeddings=[])
+            store_embeddings(record, embeddings, models)
             db.add(record)
             records.append(record)
         db.commit()
